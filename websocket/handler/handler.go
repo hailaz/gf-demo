@@ -25,7 +25,7 @@ type MyUser struct {
 // MyGroup description
 type MyGroup struct {
 	Group
-	users []*MyUser
+	Users []*MyUser
 }
 
 // SendMsg description
@@ -115,7 +115,7 @@ func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
 		// 发送给群组
 		if group, ok := h.groupList.Load(msg.GroupName); ok {
 			if groupObj, ok := group.(MyGroup); ok {
-				for _, user := range groupObj.users {
+				for _, user := range groupObj.Users {
 					// 使用user.conn发送消息
 					user.SendMsg(ctx, msg)
 				}
@@ -147,7 +147,7 @@ func (h *MyHandler) AddGroup(ctx context.Context, msg *MsgBody) error {
 				},
 				conn: msg.conn,
 			}
-			groupObj.users = append(groupObj.users, &user)
+			groupObj.Users = append(groupObj.Users, &user)
 			h.groupList.Store(msg.GroupName, groupObj)
 		}
 	} else {
@@ -161,20 +161,21 @@ func (h *MyHandler) AddGroup(ctx context.Context, msg *MsgBody) error {
 			Group: Group{
 				Name: msg.GroupName,
 			},
-			users: []*MyUser{&user},
+			Users: []*MyUser{&user},
 		}
 		h.groupList.Store(msg.GroupName, group)
 	}
+	msg.Send("AddGroup")
 	return nil
 }
 
 func (h *MyHandler) DelGroup(ctx context.Context, msg *MsgBody) error {
 	if group, ok := h.groupList.Load(msg.GroupName); ok {
 		if groupObj, ok := group.(MyGroup); ok {
-			for i, user := range groupObj.users {
+			for i, user := range groupObj.Users {
 				if user.Name == msg.UserName {
 					// 从群组中移除用户
-					groupObj.users = append(groupObj.users[:i], groupObj.users[i+1:]...)
+					groupObj.Users = append(groupObj.Users[:i], groupObj.Users[i+1:]...)
 					break
 				}
 			}
@@ -193,7 +194,7 @@ func (h *MyHandler) GroupIn(ctx context.Context, msg *MsgBody) error {
 				},
 				conn: msg.conn,
 			}
-			groupObj.users = append(groupObj.users, &user)
+			groupObj.Users = append(groupObj.Users, &user)
 			h.groupList.Store(msg.GroupName, groupObj)
 		}
 	} else {
@@ -205,10 +206,10 @@ func (h *MyHandler) GroupIn(ctx context.Context, msg *MsgBody) error {
 func (h *MyHandler) GroupOut(ctx context.Context, msg *MsgBody) error {
 	if group, ok := h.groupList.Load(msg.GroupName); ok {
 		if groupObj, ok := group.(MyGroup); ok {
-			for i, user := range groupObj.users {
+			for i, user := range groupObj.Users {
 				if user.Name == msg.UserName {
 					// 从群组中移除用户
-					groupObj.users = append(groupObj.users[:i], groupObj.users[i+1:]...)
+					groupObj.Users = append(groupObj.Users[:i], groupObj.Users[i+1:]...)
 					break
 				}
 			}

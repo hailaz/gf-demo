@@ -86,5 +86,6 @@ type User struct {
 
 // Group description
 type Group struct {
-	Name string
+	Name  string
+	Users []*User
 }

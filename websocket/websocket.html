@@ -37,9 +37,15 @@
         $("<div class=\"list-group-item list-group-item-danger\">" + content + "</div>").appendTo("#divShow")
     }
 
+    function SendMsg(ws, msgBody) {
+        const jsonString = JSON.stringify(msgBody);
+        ws.send(jsonString);
+    }
+
     $(function () {
         var url = "ws://127.0.0.1:8199/ws";
         var ws = new WebSocket(url);
+
         try {
             // ws连接成功
             ws.onopen = function () {
@@ -53,15 +59,21 @@
                 };
                 const jsonString = JSON.stringify(msgBody);
                 ws.send(jsonString);
-                const msgBody1 = {
-                    MsgType: 'user_list',    // You need to assign a value to this property
+                SendMsg(ws,{
+                    MsgType: 'add_group',    // You need to assign a value to this property
+                    Content: '',
+                    Sender: 'hailaz',
+                    UserName: 'hailaz',
+                    GroupName: 'testgroup'
+                });
+                SendMsg(ws,{
+                    MsgType: 'group_list',    // You need to assign a value to this property
                     Content: '',
                     Sender: 'hailaz',
                     UserName: '',
                     GroupName: ''
-                };
-                const jsonString1 = JSON.stringify(msgBody1);
-                ws.send(jsonString1);
+                });
+                
             };
             // ws连接关闭
             ws.onclose = function () {
