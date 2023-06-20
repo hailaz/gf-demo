@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- Import style -->
+    <link rel="stylesheet" href="//unpkg.com/element-plus@2.3.6/dist/index.css" />
+    <!-- Import Vue 3 -->
+    <script src="//unpkg.com/vue@3.3.4/dist/vue.global.js"></script>
+
+    <!-- Import component library -->
+    <script src="//unpkg.com/element-plus@2.3.6/dist/index.full.js"></script>
+</head>
+
+<body>
+    <div id="app">{{ message }}
+        <chat-card username="hailaz"></chat-card>
+        <chat-card username="hailaz1"></chat-card>
+    </div>
+</body>
+
+<script type="text/x-template" id="chat-card-template">
+    <el-container style="height: 500px;" v-if="loggedIn">
+        <el-aside width="200px">
+          <el-menu default-active="1" @select="handleMenuSelect">
+            用户列表
+            <el-menu-item v-for="user in userList" :key="user.id" :index="user.id">{{ user.name }}</el-menu-item>
+          </el-menu>
+        </el-aside>
+        <el-container>
+            <!-- 聊天界面 -->
+          <el-header>{{ chatTitle }}</el-header>
+          <el-main>
+            <div class="chat">
+                <div v-for="message in messages" :key="message.id">
+                  <div v-if="message.Sender != username">
+                    <div class="received-message">
+                      [{{ message.Sender }}]{{message.TimeString}} - {{ message.Content }}
+                    </div>
+                  </div>
+                  <div v-else>
+                    <div class="sent-message">
+                      [{{ message.Sender }}]{{message.TimeString}} - {{ message.Content }}
+                    </div>
+                  </div>
+                </div>
+                <div class="input-container">
+                  <el-input v-model="messageText" placeholder="Type your message..." />
+                  <el-button @click="sendMessage">Send</el-button>
+                </div>
+              </div>
+          </el-main>
+        </el-container>
+      </el-container>
+      <!-- 登录界面 -->
+      <el-container v-else>
+        <el-header>登录</el-header>
+        <el-main>
+          <div class="login-container">
+            <el-form :model="loginForm" ref="loginForm" label-width="80px">
+              <el-form-item label="名字">
+                <el-input v-model="loginForm.username" placeholder="Enter your username"></el-input>
+              </el-form-item>
+              <!-- <el-form-item label="Password">
+                <el-input v-model="loginForm.password" placeholder="Enter your password" type="password"></el-input>
+              </el-form-item> -->
+              <el-form-item>
+                <el-button type="primary" @click="login">进行聊天</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+        </el-main>
+      </el-container>      
+</script>
+
+
+
+<!-- 操作内容编辑组件注册 -->
+<script>
+    const { createApp } = Vue
+
+    const app = createApp({
+        data() {
+            return {
+                message: 'hello world',
+            }
+        }
+    })
+    app.use(ElementPlus);
+
+
+    app.component('chat-card', {
+        props: ['username'],
+        data() {
+            return {
+                loggedIn: false,
+                loginForm: {
+                    username: this.username,
+                    password: ''
+                },
+                chatTitle: '聊天室',
+                currentChat: null,
+                messageText: '777',
+                groupMessageText: '',
+                messages: [
+                    {
+                        "MsgType": "send_all",
+                        "Content": "123",
+                        "Sender": "hailaz",
+                        "UserName": "",
+                        "GroupName": "","TimeString":"2023-06-13 16:35:32"
+                    },
+                    {
+                        "MsgType": "send_all",
+                        "Content": "123456",
+                        "Sender": "hailaz1",
+                        "UserName": "",
+                        "GroupName": "","TimeString":"2023-06-13 16:35:32"
+                    },
+                ],
+                groupMessages: [],
+                ws: null,
+                userList: [
+                    { id: 1, name: 'User 1' },
+                    { id: 2, name: 'User 2' },
+                    { id: 3, name: 'User 3' }
+                ],
+            };
+        },
+        methods: {
+            login() {
+                // 发送登录请求到服务器，并设置loggedIn为true
+                this.loggedIn = true;
+                const message = {
+                    MsgType: 'login',    // You need to assign a value to this property
+                    Content: '',
+                    Sender: '',
+                    UserName: this.loginForm.username,
+                    GroupName: ''
+                };
+                this.sendObj(message);
+            },
+            logout() {
+                // 发送退出请求到服务器，并设置loggedIn为false
+                this.loggedIn = false;
+                this.currentChat = null;
+                this.messages = [];
+                this.groupMessages = [];
+            },
+            sendMessage() {
+                if (this.messageText === '') {
+                    // 时间字符
+                    this.messageText = new Date().toLocaleString();
+                }
+                // 发送单独聊天消息到服务器
+                const message = {
+                    MsgType: 'send_all',    // You need to assign a value to this property
+                    Content: this.messageText,
+                    Sender: this.username,
+                    GroupName: ''
+                };
+
+                // 将消息发送到服务器
+                // 这里使用this.$socket来访问WebSocket实例
+                this.sendObj(message);
+
+                // 清空消息输入框
+                this.messageText = '';
+            },
+            sendGroupMessage() {
+
+                // 清空消息输入框
+                this.groupMessageText = '';
+            },
+            sendObj(msgBody) {
+                const jsonString = JSON.stringify(msgBody);
+                this.ws.send(jsonString);
+            },
+        },
+        mounted() {
+            // Connect to WebSocket server
+            this.ws = new WebSocket('ws://127.0.0.1:8199/ws');
+
+            // WebSocket event handlers
+            this.ws.onopen = () => {
+                console.log('Connected to WebSocket server');
+                
+            };
+
+            this.ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                console.log(message);
+                // 根据消息类型进行处理
+                switch (message.MsgType) {
+                    case 'send_all':
+                        this.messages.push(message);
+                        break;
+
+                    default:
+                        break;
+                }
+
+            };
+
+            this.ws.onclose = () => {
+                console.log('Disconnected from WebSocket server');
+            };
+
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            // // 监听WebSocket消息事件
+            // this.$options.sockets.onmessage = (event) => {
+            //     const message = JSON.parse(event.data);
+
+            //     // 根据消息类型进行处理
+            //     if (message.type === 'individual') {
+            //         // 单独聊天消息
+            //         this.messages.push(message);
+            //     } else if (message.type === 'group') {
+            //         // 群组聊天消息
+            //         this.groupMessages.push(message);
+            //     }
+            // };
+        },
+        template: '#chat-card-template'
+    })
+
+
+
+</script>
+<script>
+    app.mount('#app');
+</script>
+
+</html>

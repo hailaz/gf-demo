@@ -40,9 +40,10 @@ func (u *MyUser) SendMsg(ctx context.Context, msg *MsgBody) error {
 		// 本机
 		if u.conn != nil {
 			u.conn.WriteJSON(MsgBody{
-				MsgType: msg.MsgType,
-				Content: msg.Content,
-				Sender:  msg.Sender,
+				MsgType:    msg.MsgType,
+				Content:    msg.Content,
+				Sender:     msg.Sender,
+				TimeString: msg.TimeString,
 			})
 			// u.conn.WriteMessage(websocket.TextMessage, []byte(msg.Content))
 		} else {

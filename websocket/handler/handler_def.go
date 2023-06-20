@@ -38,12 +38,13 @@ const (
 
 // MsgBody description
 type MsgBody struct {
-	MsgType   MsgType
-	Content   string
-	Sender    string
-	UserName  string
-	GroupName string
-	conn      *ghttp.WebSocket
+	MsgType    MsgType
+	Content    string
+	Sender     string
+	UserName   string
+	GroupName  string
+	TimeString string
+	conn       *ghttp.WebSocket
 }
 
 // SetConn description

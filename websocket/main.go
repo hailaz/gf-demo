@@ -8,6 +8,7 @@ import (
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/gogf/gf/v2/os/gfile"
 	"github.com/gogf/gf/v2/os/glog"
+	"github.com/gogf/gf/v2/os/gtime"
 )
 
 // http://127.0.0.1:8199/websocket.html
@@ -50,6 +51,7 @@ func HandlerWs(r *ghttp.Request) {
 				glog.Error(ctx, err)
 				continue
 			}
+			msgBody.TimeString = gtime.Now().Format("Y-m-d H:i:s")
 			msgBody.SetConn(ws)
 			switch msgBody.MsgType {
 			case handler.MsgTypeLogin:
