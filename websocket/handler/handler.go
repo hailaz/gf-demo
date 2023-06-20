@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	Localhost  = "localhost"
 	ServerList = []string{
 		"127.0.0.1:8199",
 	}
@@ -36,7 +37,7 @@ type MyGroup struct {
 func (u *MyUser) SendMsg(ctx context.Context, msg *MsgBody) error {
 	glog.Debug(ctx, "SendTo", u.Name, u.address)
 	glog.Debug(ctx, "SendMsg", msg)
-	if u.address == "localhost" {
+	if u.address == Localhost {
 		// 本机
 		if u.conn != nil {
 			u.conn.WriteJSON(MsgBody{
@@ -78,15 +79,17 @@ func (h *MyHandler) Login(ctx context.Context, msg *MsgBody) error {
 			Name: msg.UserName,
 		},
 		conn:    msg.conn,
-		address: "localhost",
+		address: Localhost,
 	}
 	h.userList.Store(msg.UserName, user)
 	msg.Send(nil)
+	h.SendMsg(ctx, msg)
 	return nil
 }
 
 func (h *MyHandler) Logout(ctx context.Context, msg *MsgBody) error {
 	h.userList.Delete(msg.UserName)
+	h.SendMsg(ctx, msg)
 	return nil
 }
 
@@ -103,7 +106,8 @@ func (h *MyHandler) UserList(ctx context.Context, msg *MsgBody) ([]User, error) 
 }
 
 func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
-	if msg.MsgType == MsgTypeSendSingle {
+	switch msg.MsgType {
+	case MsgTypeSendSingle:
 		// 发送给单个用户
 		if user, ok := h.userList.Load(msg.UserName); ok {
 			if userObj, ok := user.(MyUser); ok {
@@ -112,7 +116,7 @@ func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
 		} else {
 			return errors.New("User not found")
 		}
-	} else if msg.MsgType == MsgTypeSendGroup {
+	case MsgTypeSendGroup:
 		// 发送给群组
 		if group, ok := h.groupList.Load(msg.GroupName); ok {
 			if groupObj, ok := group.(MyGroup); ok {
@@ -124,7 +128,7 @@ func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
 		} else {
 			return errors.New("Group not found")
 		}
-	} else if msg.MsgType == MsgTypeSendAll {
+	case MsgTypeSendAll, MsgTypeLogin, MsgTypeLogout:
 		// 发送给所有用户
 		h.userList.Range(func(key, value interface{}) bool {
 			if userObj, ok := value.(MyUser); ok {
@@ -133,10 +137,12 @@ func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
 			}
 			return true
 		})
-	} else {
+	default:
 		return errors.New("Invalid message type")
 	}
+
 	return nil
+
 }
 
 func (h *MyHandler) AddGroup(ctx context.Context, msg *MsgBody) error {

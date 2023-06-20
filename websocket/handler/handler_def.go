@@ -44,6 +44,9 @@ type MsgBody struct {
 	UserName   string
 	GroupName  string
 	TimeString string
+	Code       int
+	Msg        string
+	Data       interface{}
 	conn       *ghttp.WebSocket
 }
 
@@ -56,26 +59,14 @@ func (msg *MsgBody) SetConn(conn *ghttp.WebSocket) {
 	msg.conn = conn
 }
 
-// Resp description
-type Resp struct {
-	Code int
-	Msg  string
-	Data interface{}
-}
-
 // Send description
 //
 // createTime: 2023-06-01 17:40:09
 //
 // author: hailaz
-func (msg *MsgBody) Send(obj interface{}) error {
+func (msg *MsgBody) Send(resp MsgBody) error {
 	if msg.conn == nil {
 		return errors.New("conn is nil")
-	}
-	resp := Resp{
-		Code: 0,
-		Msg:  "success",
-		Data: obj,
 	}
 	return msg.conn.WriteJSON(resp)
 }
