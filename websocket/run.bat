@@ -1,0 +1,1 @@
+gf run main.go --args "--gf.gcfg.file=config.yaml"

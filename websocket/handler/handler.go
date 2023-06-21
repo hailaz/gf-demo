@@ -5,14 +5,17 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/gogf/gf/v2/net/gclient"
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/gogf/gf/v2/os/glog"
 )
 
 var (
 	Localhost  = "localhost"
+	SystemName = "system"
 	ServerList = []string{
-		"127.0.0.1:8199",
+		"127.0.0.1:8080",
+		"127.0.0.1:8081",
 	}
 )
 
@@ -29,23 +32,22 @@ type MyGroup struct {
 	Users []*MyUser
 }
 
-// SendMsg description
+// Send description
 //
 // createTime: 2023-06-01 16:55:13
 //
 // author: hailaz
-func (u *MyUser) SendMsg(ctx context.Context, msg *MsgBody) error {
+func (u *MyUser) Send(ctx context.Context, msg *MsgBody) error {
+	glog.Debug(ctx, "Send msg", msg)
+	if u.Name == msg.Sender {
+		return nil
+	}
 	glog.Debug(ctx, "SendTo", u.Name, u.address)
-	glog.Debug(ctx, "SendMsg", msg)
+
 	if u.address == Localhost {
 		// 本机
 		if u.conn != nil {
-			u.conn.WriteJSON(MsgBody{
-				MsgType:    msg.MsgType,
-				Content:    msg.Content,
-				Sender:     msg.Sender,
-				TimeString: msg.TimeString,
-			})
+			u.conn.WriteJSON(msg)
 			// u.conn.WriteMessage(websocket.TextMessage, []byte(msg.Content))
 		} else {
 			return errors.New("User not found")
@@ -53,7 +55,8 @@ func (u *MyUser) SendMsg(ctx context.Context, msg *MsgBody) error {
 
 	} else {
 		// 跨机
-		// ...
+		gclient.New().PostContent(ctx, "http://"+u.address+"/send", msg)
+
 	}
 	return nil
 }
@@ -74,6 +77,9 @@ func NewHandler() *MyHandler {
 }
 
 func (h *MyHandler) Login(ctx context.Context, msg *MsgBody) error {
+	if msg.UserName == SystemName {
+		return errors.New("system name is not allowed")
+	}
 	user := MyUser{
 		User: User{
 			Name: msg.UserName,
@@ -81,8 +87,12 @@ func (h *MyHandler) Login(ctx context.Context, msg *MsgBody) error {
 		conn:    msg.conn,
 		address: Localhost,
 	}
+	if msg.UserName == "hailaz" {
+		user.address = ServerList[0]
+	}
 	h.userList.Store(msg.UserName, user)
-	msg.Send(nil)
+	msg.Sender = SystemName
+	msg.Send(*msg)
 	h.SendMsg(ctx, msg)
 	return nil
 }
@@ -101,17 +111,18 @@ func (h *MyHandler) UserList(ctx context.Context, msg *MsgBody) ([]User, error) 
 		}
 		return true
 	})
-	msg.Send(userList)
 	return userList, nil
 }
 
 func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
+	glog.Debugf(ctx, "SendMsg: %+v", *msg)
 	switch msg.MsgType {
 	case MsgTypeSendSingle:
 		// 发送给单个用户
 		if user, ok := h.userList.Load(msg.UserName); ok {
+			glog.Debug(ctx, "SendMsg ", msg.UserName)
 			if userObj, ok := user.(MyUser); ok {
-				userObj.SendMsg(ctx, msg)
+				userObj.Send(ctx, msg)
 			}
 		} else {
 			return errors.New("User not found")
@@ -122,7 +133,7 @@ func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
 			if groupObj, ok := group.(MyGroup); ok {
 				for _, user := range groupObj.Users {
 					// 使用user.conn发送消息
-					user.SendMsg(ctx, msg)
+					user.Send(ctx, msg)
 				}
 			}
 		} else {
@@ -130,15 +141,49 @@ func (h *MyHandler) SendMsg(ctx context.Context, msg *MsgBody) error {
 		}
 	case MsgTypeSendAll, MsgTypeLogin, MsgTypeLogout:
 		// 发送给所有用户
-		h.userList.Range(func(key, value interface{}) bool {
-			if userObj, ok := value.(MyUser); ok {
-				// 使用userObj.conn发送消息
-				userObj.SendMsg(ctx, msg)
+		if msg.MsgType == MsgTypeLogin || msg.MsgType == MsgTypeLogout {
+			userList, _ := h.UserList(ctx, msg)
+			userListMsg := MsgBody{
+				MsgType: MsgTypeUserList,
+				Sender:  SystemName,
+				Data:    userList,
 			}
-			return true
-		})
+			h.userList.Range(func(key, value interface{}) bool {
+				if userObj, ok := value.(MyUser); ok {
+					// 使用userObj.conn发送消息
+					userObj.Send(ctx, msg)
+					userObj.Send(ctx, &userListMsg)
+				}
+				return true
+			})
+		} else {
+			h.userList.Range(func(key, value interface{}) bool {
+				if userObj, ok := value.(MyUser); ok {
+					// 使用userObj.conn发送消息
+					userObj.Send(ctx, msg)
+				}
+				return true
+			})
+		}
+
 	default:
-		return errors.New("Invalid message type")
+		return errors.New("invalid message type")
+	}
+
+	return nil
+
+}
+
+func (h *MyHandler) SendMsgFromHttp(ctx context.Context, msg *MsgBody) error {
+	glog.Debugf(ctx, "SendMsg: %+v", *msg)
+
+	if user, ok := h.userList.Load(msg.UserName); ok {
+		glog.Debug(ctx, "SendMsg ", msg.UserName)
+		if userObj, ok := user.(MyUser); ok {
+			userObj.Send(ctx, msg)
+		}
+	} else {
+		return errors.New("User not found")
 	}
 
 	return nil
@@ -172,7 +217,8 @@ func (h *MyHandler) AddGroup(ctx context.Context, msg *MsgBody) error {
 		}
 		h.groupList.Store(msg.GroupName, group)
 	}
-	msg.Send("AddGroup")
+
+	msg.Send(*msg)
 	return nil
 }
 
@@ -236,6 +282,7 @@ func (h *MyHandler) GroupList(ctx context.Context, msg *MsgBody) ([]Group, error
 		}
 		return true
 	})
-	msg.Send(groupList)
+	msg.Data = groupList
+	msg.Send(*msg)
 	return groupList, nil
 }

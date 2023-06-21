@@ -13,7 +13,7 @@ import (
 
 // http://127.0.0.1:8199/websocket.html
 
-var myHandler handler.Handler
+var myHandler *handler.MyHandler
 
 // init description
 //
@@ -60,11 +60,7 @@ func HandlerWs(r *ghttp.Request) {
 				myHandler.Logout(ctx, &msgBody)
 			case handler.MsgTypeUserList:
 				myHandler.UserList(ctx, &msgBody)
-			case handler.MsgTypeSendSingle:
-				myHandler.SendMsg(ctx, &msgBody)
-			case handler.MsgTypeSendGroup:
-				myHandler.SendMsg(ctx, &msgBody)
-			case handler.MsgTypeSendAll:
+			case handler.MsgTypeSendSingle, handler.MsgTypeSendGroup, handler.MsgTypeSendAll:
 				myHandler.SendMsg(ctx, &msgBody)
 			case handler.MsgTypeAddGroup:
 				myHandler.AddGroup(ctx, &msgBody)
@@ -81,10 +77,30 @@ func HandlerWs(r *ghttp.Request) {
 	}
 }
 
+// HanderSend description
+//
+// createTime: 2023-06-21 16:49:12
+//
+// author: hailaz
+func HanderSend(r *ghttp.Request) {
+	var ctx = r.Context()
+	msgBody := handler.MsgBody{}
+	err := r.Parse(&msgBody)
+	if err != nil {
+		glog.Error(ctx, err)
+		return
+	}
+	msgBody.UserName = "hailaz2"
+	glog.Debugf(ctx, "服务器http收到消息：%+v", msgBody)
+	myHandler.SendMsgFromHttp(ctx, &msgBody)
+
+}
+
 func main() {
 	s := g.Server()
 	s.BindHandler("/ws", HandlerWs)
+	s.BindHandler("/send", HanderSend)
 	s.SetServerRoot(gfile.MainPkgPath())
-	s.SetPort(8199)
+	// s.SetPort(8199)
 	s.Run()
 }

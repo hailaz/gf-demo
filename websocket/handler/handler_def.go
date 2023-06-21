@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/gogf/gf/v2/net/ghttp"
+	"github.com/gogf/gf/v2/os/glog"
 )
 
 type Handler interface {
@@ -12,6 +13,7 @@ type Handler interface {
 	Logout(ctx context.Context, msg *MsgBody) error
 	UserList(ctx context.Context, msg *MsgBody) ([]User, error)
 	SendMsg(ctx context.Context, msg *MsgBody) error
+	SendMsgFromHttp(ctx context.Context, msg *MsgBody) error
 	AddGroup(ctx context.Context, msg *MsgBody) error
 	DelGroup(ctx context.Context, msg *MsgBody) error
 	GroupIn(ctx context.Context, msg *MsgBody) error
@@ -38,16 +40,16 @@ const (
 
 // MsgBody description
 type MsgBody struct {
-	MsgType    MsgType
-	Content    string
-	Sender     string
-	UserName   string
-	GroupName  string
-	TimeString string
-	Code       int
-	Msg        string
-	Data       interface{}
-	conn       *ghttp.WebSocket
+	MsgType    MsgType          `json:"msgType"`
+	Content    string           `json:"content"`
+	Sender     string           `json:"sender"`
+	UserName   string           `json:"userName"`
+	GroupName  string           `json:"groupName"`
+	TimeString string           `json:"timeString"`
+	Code       int              `json:"code"`
+	Msg        string           `json:"msg"`
+	Data       interface{}      `json:"data"`
+	conn       *ghttp.WebSocket `json:"-"`
 }
 
 // SetConn description
@@ -68,16 +70,17 @@ func (msg *MsgBody) Send(resp MsgBody) error {
 	if msg.conn == nil {
 		return errors.New("conn is nil")
 	}
+	glog.Debug(context.Background(), "服务器发送消息：msgType:", resp.MsgType, " msg:", resp)
 	return msg.conn.WriteJSON(resp)
 }
 
 // User description
 type User struct {
-	Name string
+	Name string `json:"name"`
 }
 
 // Group description
 type Group struct {
-	Name  string
-	Users []*User
+	Name  string  `json:"name"`
+	Users []*User `json:"users"`
 }
