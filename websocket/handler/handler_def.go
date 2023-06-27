@@ -76,7 +76,8 @@ func (msg *MsgBody) Send(resp MsgBody) error {
 
 // User description
 type User struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	Address string `json:"address"` // ip:port 跨机的时候用
 }
 
 // Group description

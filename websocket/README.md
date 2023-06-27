@@ -1,6 +1,7 @@
 # websocket
 
-http://127.0.0.1:8199/vue.html
+http://127.0.0.1:8080/vue.html
+http://127.0.0.1:8081/vue.html
 
 简单聊天室
 

@@ -19,11 +19,11 @@
   <div id="app">
     <chat-card username="hailaz"></chat-card>
     <chat-card username="hailaz1"></chat-card>
-    <chat-card username="hailaz2"></chat-card>
   </div>
 </body>
 
 <script type="text/x-template" id="chat-card-template">
+  <el-text class="mx-1">websocketStatus: {{websocketStatus}}</el-text>
     <el-container style="height: 500px;" v-if="loggedIn">
         <el-aside width="200px">
           <el-menu default-active="1" @select="">
@@ -37,7 +37,7 @@
           <el-main>
             <div class="chat">
                 <div v-for="message in messages" :key="message.id">
-                  <div v-if="message.sender != username">
+                  <div v-if="message.sender != loginForm.username">
                     <div class="received-message" :title="message.msgType + message.timeString">
                       <el-text class="mx-1" type="primary">[{{ message.sender }}]: </el-text>
                       <!-- <el-text class="mx-1" type="info">{{message.timeString}}</el-text> -->
@@ -123,6 +123,7 @@
           username: this.username,
           password: ''
         },
+        websocketStatus: '未连接',
         chatTitle: '聊天室',
         currentChat: null,
         messageText: '777',
@@ -183,7 +184,7 @@
         const message = {
           msgType: MsgTypeSendAll,    // You need to assign a value to this property
           content: this.messageText,
-          sender: this.username,
+          sender: this.loginForm.username,
           groupName: ''
         };
 
@@ -212,18 +213,25 @@
     mounted() {
       var that = this;
       MyLog(window.location.host)
+      var wshost = window.location.host
+      if (window.location.host == '127.0.0.1:5500') {
+        wshost = '127.0.0.1:8080'
+      } else {
+        wshost = window.location.host
+      }
       // Connect to WebSocket server
-      this.ws = new WebSocket('ws://' + window.location.host + '/ws');
+      this.ws = new WebSocket('ws://' + wshost + '/ws');
 
       // WebSocket event handlers
       this.ws.onopen = () => {
         console.log('Connected to WebSocket server');
-        this.login();
+        this.websocketStatus = '已连接';
+        // this.login();
       };
 
       this.ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        MyLog('onmessage:', message);
+        MyLog(this.loginForm.username + '-onmessage:', message);
         // 根据消息类型进行处理
         switch (message.msgType) {
           case MsgTypeSendAll:
@@ -250,10 +258,12 @@
 
       this.ws.onclose = () => {
         console.log('Disconnected from WebSocket server');
+        this.websocketStatus = '未连接';
       };
 
       this.ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        this.websocketStatus = '连接错误';
       };
       // // 监听WebSocket消息事件
       // this.$options.sockets.onmessage = (event) => {
