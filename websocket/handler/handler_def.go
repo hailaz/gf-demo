@@ -8,19 +8,6 @@ import (
 	"github.com/gogf/gf/v2/os/glog"
 )
 
-type Handler interface {
-	Login(ctx context.Context, msg *MsgBody) error
-	Logout(ctx context.Context, msg *MsgBody) error
-	UserList(ctx context.Context, msg *MsgBody) ([]User, error)
-	SendMsg(ctx context.Context, msg *MsgBody) error
-	SendMsgFromHttp(ctx context.Context, msg *MsgBody) error
-	AddGroup(ctx context.Context, msg *MsgBody) error
-	DelGroup(ctx context.Context, msg *MsgBody) error
-	GroupIn(ctx context.Context, msg *MsgBody) error
-	GroupOut(ctx context.Context, msg *MsgBody) error
-	GroupList(ctx context.Context, msg *MsgBody) ([]Group, error)
-}
-
 // MsgType description
 type MsgType string
 
